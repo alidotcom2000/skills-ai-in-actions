@@ -21,6 +21,8 @@ jobs:
         id: ai-response
         uses: actions/ai-inference@v1
         with:
+          token: ${{ secrets.COPILOT_PAT }}
+          provider: copilot
           prompt: |
             Give me a programming joke.
           model: gpt-4.1
