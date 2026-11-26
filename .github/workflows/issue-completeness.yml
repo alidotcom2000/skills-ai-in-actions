@@ -1,13 +1,17 @@
 name: Issue Completeness
+
 on:
   issues:
     types: [opened]
+
 permissions:
   issues: write
+
 jobs:
   analyze:
     name: AI Issue Completeness
     runs-on: ubuntu-latest
+
     steps:
       - name: Validate Azure OpenAI configuration
         env:
@@ -17,29 +21,36 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           if [[ -z "${AZURE_OPENAI_API_KEY}" ]]; then
             echo "::error::AZURE_OPENAI_API_KEY secret is missing"
             exit 1
           fi
+
           if [[ -z "${AZURE_OPENAI_ENDPOINT}" ]]; then
             echo "::error::AZURE_OPENAI_ENDPOINT secret is missing"
             exit 1
           fi
+
           if [[ -z "${AZURE_OPENAI_DEPLOYMENT}" ]]; then
             echo "::error::AZURE_OPENAI_DEPLOYMENT secret is missing"
             exit 1
           fi
+
           if [[ "${AZURE_OPENAI_API_KEY}" =~ [[:space:]] ]]; then
             echo "::error::AZURE_OPENAI_API_KEY contains whitespace"
             exit 1
           fi
+
           case "${AZURE_OPENAI_ENDPOINT}" in
-https://*) ;;
+            https://*)
+              ;;
             *)
               echo "::error::AZURE_OPENAI_ENDPOINT must be a full URL like https://sa-project.openai.azure.com/"
               exit 1
               ;;
           esac
+
       - name: Analyze issue with Azure OpenAI
         id: ai-response
         env:
@@ -52,6 +63,7 @@ https://*) ;;
         shell: bash
         run: |
           set -euo pipefail
+
           prompt=$(
             printf '%s\n' \
               "New issue was opened by ${ISSUE_AUTHOR}" \
@@ -61,7 +73,9 @@ https://*) ;;
               "${ISSUE_BODY}" \
               "---"
           )
+
           api_url="${AZURE_OPENAI_ENDPOINT%/}/openai/deployments/${AZURE_OPENAI_DEPLOYMENT}/chat/completions?api-version=2024-02-01"
+
           response=$(
             jq -n \
               --arg system 'You are a GitHub issue assistant. Your task is to analyze newly opened issues for completeness. Provide concise, helpful suggestions, ask clarifying questions, and identify missing details that would help the reporter fix or reproduce the problem.' \
@@ -87,13 +101,17 @@ https://*) ;;
               -H "api-key: ${AZURE_OPENAI_API_KEY}" \
               --data @-
           )
+
           message=$(printf '%s' "$response" | jq -er '.choices[0].message.content')
+
           delimiter="ghadelimiter_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+
           {
             echo "response<<${delimiter}"
             printf '%s\n' "$message"
-            echo "$delimiter"
+            echo "${delimiter}"
           } >> "$GITHUB_OUTPUT"
+
       - name: Comment results on the issue
         uses: peter-evans/create-or-update-comment@v4
         with:
