@@ -1,29 +1,25 @@
 name: Ask AI
-
 on:
-  workflow_dispatch:
-
+  workflow_dispatch
 jobs:
   ask-ai:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Install GitHub Copilot CLI
-        run: npm install -g @github/copilot
-
-      - name: AI Inference
-        id: ai-response
-        uses: actions/ai-inference@v3
+      - name: Call OpenAI
         env:
-          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT2 }}
-        with:
-          provider: copilot
-          model: gpt-4.1
-          prompt: |
-            Give me a programming joke.
-
-      - name: Display AI Response
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          echo "## 🤖 AI Response" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.ai-response.outputs.response }}" >> $GITHUB_STEP_SUMMARY
+          response=$(curl -sS https://api.openai.com/v1/chat/completions \
+            -H "Authorization: Bearer $OPENAI_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "model": "gpt-4o-mini",
+              "messages": [
+                {"role": "user", "content": "Give me a programming joke."}
+              ],
+              "temperature": 0.7
+            }')
+          joke=$(echo "$response" | jq -r '.choices[0].message.content')
+          echo "## 🤖 AI Response" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "$joke" >> "$GITHUB_STEP_SUMMARY"
